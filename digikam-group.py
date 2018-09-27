@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-# TODO config to handle exclusion of _crop and _wm files
-# TODO add crop and wm files as 'versions'
 import sys
 import argparse
 from database import Database
@@ -18,9 +16,9 @@ parser.add_argument('-t', '--tags', action='store_true', help="clone tags from p
 parser.add_argument('-r', '--ratings', action='store_true', help="merge maximum rating to all items in group")
 parser.add_argument('-c', '--commit', action='store_true', help="commit to database")
 parser.add_argument('-s', '--separator', dest='separator', default='.', type=str, help="filename prefix separator, default is '.'")
-parser.add_argument('-i,' '--ignore', dest='ignore', type=str, help="ignore filenames containing this string from becoming a prefix")
-parser.add_argument('-g' '--group-version', dest='group_version', action='store_true', help="mark images as a 'version' of parent instead of grouping")
-parser.add_argument('-d' '--delete-groups', dest='delete_groups', action='store_true', help="delete groups for all images found in path. Default only deletes images that are put into new groups")
+parser.add_argument('-i', '--ignore', dest='ignore', type=str, help="ignore filenames containing this string from becoming a prefix")
+parser.add_argument('-g', '--group-version', dest='group_version', action='store_true', help="mark images as a 'version' of parent instead of grouping")
+parser.add_argument('-d', '--delete-groups', dest='delete_groups', action='store_true', help="delete groups for all images found in path. Default only deletes images that are put into new groups")
 
 
 args = parser.parse_args()
