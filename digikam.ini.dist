@@ -1,0 +1,8 @@
+; digikam.ini
+[DATABASE]
+HOST=example.com
+PORT=3306
+USER=username
+PASS=password
+NAME=database
+
