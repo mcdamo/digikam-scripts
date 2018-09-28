@@ -36,9 +36,10 @@ optional arguments:
 **This script does not update your images.** After committing changes to database you should write metadata to images using Digikam.
 
 ## digikam-tags-check.py
-This script will find and report when the Tags tree structure is in an inconsistent state. If errors are found then you can choose to rebuild the entire tree.
+This script will find and report when the Tags nested set tree structure is in an inconsistent state. If errors are found then you can choose to rebuild the entire tree using the provided procedure.
 ### Database setup
 A pre-requisite of this script is for you to install the necessary helper procedures to the database.
 
 Install helpers with ```mysql -D digikam_core < digikam-tags-check.sql```
 
+The hierarchy function is adapted from [Explain Extended](https://explainextended.com/2009/03/17/hierarchical-queries-in-mysql/) and the tree rebuild procedure adapted from [this post](https://stackoverflow.com/a/3634268).
