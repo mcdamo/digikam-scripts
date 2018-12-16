@@ -40,7 +40,6 @@ cur = db.execute(sqlFunction, {'db': conn.db, 'name':name})
 if cur.fetchone() == None:
     errorProc("function", name)
 
-
 cur = db.execute("SELECT id,name,pid,lft,rgt FROM `Tags`;")
 tags = cur.fetchall()
 

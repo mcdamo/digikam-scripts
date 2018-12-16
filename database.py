@@ -24,10 +24,13 @@ class Database:
     def execute(self, sql, args = None):
         try:
             self.cur.execute(sql, args)
+            # store sql and args incase we want to inspect with sql()
+            self._last_sql = sql
+            self._last_args = args
             return self.cur
         except pymysql.Error as err:
             print(err)
-            print(sql)
+            print(self.sql())
             exit()
 
     def commit(self):
@@ -37,5 +40,6 @@ class Database:
         self.cur.close()
         self.conn.close()
 
+    # returns the last SQL query called
     def sql(self):
-        return self.cur._last_executed
+        return self.cur.mogrify(self._last_sql, self._last_args)
