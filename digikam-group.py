@@ -4,9 +4,8 @@ import sys
 import argparse
 from database import Database
 
-def printErr(err):
-    print("ERROR")
-    print(err)
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 parser = argparse.ArgumentParser(description="Create Digikam Groups")
 parser.add_argument("path", metavar="PATH", type=str,
@@ -20,6 +19,9 @@ parser.add_argument('-i', '--ignore', dest='ignore', type=str, help="ignore file
 parser.add_argument('-g', '--group-version', dest='group_version', action='store_true', help="mark images as a 'version' of parent instead of grouping")
 parser.add_argument('-d', '--delete-groups', dest='delete_groups', action='store_true', help="delete groups for all images found in path. Default only deletes images that are put into new groups")
 
+if len(sys.argv)==1:
+    parser.print_help(sys.stderr)
+    sys.exit(1)
 
 args = parser.parse_args()
 db = Database()
@@ -191,11 +193,11 @@ for group in groups:
 
 if (len(groups) > 0):
     if (args.commit):
-        print("Committing changes to database")
+        eprint("Committing changes to database")
         db.commit()
     else:
-        print("")
-        print("Run script with -c switch to save to database");
+        eprint("")
+        eprint("Run script with -c switch to save to database");
 db.close()
 
 
