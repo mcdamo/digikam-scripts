@@ -15,7 +15,7 @@ parser.add_argument('-t', '--tags', action='store_true', help="clone tags from p
 parser.add_argument('-r', '--ratings', action='store_true', help="merge maximum rating to all items in group")
 parser.add_argument('-c', '--commit', action='store_true', help="commit to database")
 parser.add_argument('-s', '--separator', dest='separator', default='.', type=str, help="filename prefix separator, default is '.'")
-parser.add_argument('-i', '--ignore', dest='ignore', type=str, help="ignore filenames containing this string from becoming a prefix")
+parser.add_argument('-i', '--ignore', dest='ignore', action='append', type=str, help="ignore filenames containing this string from becoming a prefix. This argument can be repeated multiple times.")
 parser.add_argument('-g', '--group-version', dest='group_version', action='store_true', help="mark images as a 'version' of parent instead of grouping")
 parser.add_argument('-d', '--delete-groups', dest='delete_groups', action='store_true', help="delete groups for all images found in path. Default only deletes images that are put into new groups")
 
@@ -45,7 +45,10 @@ GROUP BY namePrefix, i.`album`
 ORDER BY i.`album`, namePrefix;
 """
 if args.ignore:
-    sqlGroups = sqlGroups.format(where="AND i.`name` NOT LIKE '%%{0}%%'".format(args.ignore))
+    where = ""
+    for i in args.ignore:
+        where += "AND i.`name` NOT LIKE '%%{0}%%'".format(db.escape_like(i))
+    sqlGroups = sqlGroups.format(where=where)
 else:
     sqlGroups = sqlGroups.format(where="")
 # find all files with matching prefix
@@ -64,7 +67,10 @@ AND i.`name` LIKE %(match)s
 ORDER BY namePrefix, nameFull, FIELD(nameExt,'JPG') desc;
 """
 if args.ignore:
-    sqlGroup = sqlGroup.format(where='AND i.`name` NOT LIKE "%%{0}%%"'.format(args.ignore))
+    where = ""
+    for i in args.ignore:
+        where += "AND i.`name` NOT LIKE '%%{0}%%'".format(db.escape_like(i))
+    sqlGroup = sqlGroup.format(where=where)
 else:
     sqlGroup = sqlGroup.format(where="")
 
@@ -115,7 +121,7 @@ INSERT IGNORE INTO ImageTags (
 );
 """
 
-cur = db.execute(sqlGroups, {'separator': args.separator, 'path': "%"+args.path+"%"})
+cur = db.execute(sqlGroups, {'separator': args.separator, 'path': "%"+ db.escape_like(args.path) +"%"})
 
 groups = []
 for row in cur:
@@ -128,7 +134,7 @@ for group in groups:
         path = group["path"]
     prefix = group["prefix"]
     album = group["album"]
-    cur = db.execute(sqlGroup, {'prefix': prefix, 'album': album, 'match': prefix+"%"})
+    cur = db.execute(sqlGroup, {'prefix': prefix, 'album': album, 'match': db.escape_like(prefix) + "%"})
     imgs = []
     for row in cur:
         imgs.append({"id":row[0], "name":row[1]})

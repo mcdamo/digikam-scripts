@@ -20,13 +20,17 @@ class Database:
         self.conn = conn
         self.cur = self.conn.cursor();
 
+    # escape special characters for LIKE queries
+    def escape_like(self, sql):
+        return self.conn.escape_string(sql).replace('_', '\\_')
+
     # wrap execute to catch SQL errors
     def execute(self, sql, args = None):
         try:
-            self.cur.execute(sql, args)
             # store sql and args incase we want to inspect with sql()
             self._last_sql = sql
             self._last_args = args
+            self.cur.execute(sql, args)
             return self.cur
         except pymysql.Error as err:
             print(err)
