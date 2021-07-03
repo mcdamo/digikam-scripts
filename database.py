@@ -13,7 +13,8 @@ class Database:
           port=int(config['DATABASE']['PORT']),
           user=config['DATABASE']['USER'],
           passwd=config['DATABASE']['PASS'],
-          db=config['DATABASE']['NAME'])
+          db=config['DATABASE']['NAME'],
+          charset='utf8')
         conn.autocommit(False)
         # filter duplicate entry warnings
         warnings.filterwarnings('ignore', category=pymysql.Warning)
