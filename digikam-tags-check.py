@@ -10,81 +10,64 @@ from database import Database
 
 parser = argparse.ArgumentParser(description='Check Digikam Tags Tree')
 parser.add_argument('-q', '--quiet', action='store_true', help="quiet, don't output if tree ok")
-parser.add_argument('-c', '--commit', action='store_true', help='commit rebuild to database')
 
 args = parser.parse_args()
 
-def errorProc(type, name):
-    print("""Database {type} '{name}' is not found.
-Check your database for the {type} or run the provided SQL script to create the {type}."""
-        .format(type=type, name=name))
-    sys.exit(1)
-
-def errorDesc():
-    print("""
-INCONSISTENT TAGS TREE
-Recommend running this script with -c switch to rebuild tags tree.
-""")
 
 db = Database()
-conn = db.conn
-# check for required database procedures
-name="tags_rebuild"
-sqlProcedure="SHOW PROCEDURE STATUS WHERE `Db`=%(db)s AND `Name`=%(name)s;"
-cur = db.execute(sqlProcedure, {'db': conn.db, 'name':name})
-if cur.fetchone() == None:
-    errorProc("procedure", name)
-name="hierarchy_connect_by_parent_eq_prior_id"
-sqlFunction="SHOW FUNCTION STATUS WHERE `Db`=%(db)s AND `Name`=%(name)s;"
-cur = db.execute(sqlFunction, {'db': conn.db, 'name':name})
-if cur.fetchone() == None:
-    errorProc("function", name)
+db2 = Database()
 
-cur = db.execute("SELECT id,name,pid,lft,rgt FROM `Tags`;")
+sql = "SELECT id, pid, name FROM Tags WHERE id <> 0"
+cur = db.execute(sql)
 tags = cur.fetchall()
 
-sql = """SELECT sub.* FROM
-(
-  SELECT *
-    FROM `Tags` nt0
-  ) sub
-  INNER JOIN `Tags` nt1
-  LEFT JOIN
-  (
-    SELECT  hierarchy_connect_by_parent_eq_prior_id(id) AS id
-    FROM    (
-                SELECT  @start_with := {id},
-                        @id := @start_with,
-                        @level := 1
-                ) vars, `Tags`
-        WHERE   @id IS NOT NULL
-    ) sub2 ON sub2.id = sub.id
- 
-  WHERE nt1.id = {id}
-  AND ((sub.`lft` > nt1.`lft` AND sub.`lft` <= nt1.`rgt`)
-   OR (sub.`rgt` > nt1.`lft` AND sub.`rgt` < nt1.`rgt`))
-  AND sub2.`id` IS NULL
-;
+sqlAncestor = """
+WITH RECURSIVE ancestors (id, pid) AS (
+   SELECT id, pid
+   FROM Tags
+   WHERE id = %(id)s
+   UNION ALL
+   SELECT c.id, c.pid
+   FROM Tags c
+     JOIN ancestors p ON p.pid = c.id
+     WHERE c.id <> 0 -- prevent root tag
+) 
+SELECT *
+FROM ancestors
+ORDER BY pid
 """
-flag = False
-for tag in tags:
-    id = tag[0]
-    cur = db.execute(sql.format(id = id))
-    for row in cur:
-        if(not flag):
-            print("Overlapped tags:")
-        flag = True
-        print(" - {0} {1}".format(tag,row))
 
-if not flag and not args.quiet:
+sqlTree = """
+SELECT id, pid
+FROM TagsTree
+WHERE id = %(id)s
+ORDER BY pid
+"""
+
+errors = []
+for tag in tags:
+    curA = db.execute(sqlAncestor, {'id': tag[0]})
+    tagsA = curA.fetchall()
+    curT = db.execute(sqlTree, {'id': tag[0]})
+    tagsT = curT.fetchall()
+    for idx, tagA in enumerate(tagsA):
+        try:
+            if tagA[1] != tagsT[idx][1]:
+                errors.append(tag)
+                break
+        except IndexError:
+            errors.append(tag)
+            break
+
+if errors:
+    print("""
+INCONSISTENT TAGS TREE
+""")
+    for tag in errors:
+        print(tag)
+
+elif not args.quiet:
     print("No errors found")
-if flag:
-    if args.commit:
-        print("Committing changes to database")
-        sql="CALL tags_rebuild();"
-        cur = db.execute(sql)
-        db.commit() # not required for db PROCEDURE
-    else:
-         errorDesc()
 
 db.close()
+db2.close()
