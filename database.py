@@ -4,29 +4,31 @@ import configparser
 import pymysql
 import warnings
 
+
 class Database:
-    
     def __init__(self):
         config = configparser.ConfigParser()
-        config.read('digikam.ini')
-        conn = pymysql.connect(host=config['DATABASE']['HOST'],
-          port=int(config['DATABASE']['PORT']),
-          user=config['DATABASE']['USER'],
-          passwd=config['DATABASE']['PASS'],
-          db=config['DATABASE']['NAME'],
-          charset='utf8')
+        config.read("digikam.ini")
+        conn = pymysql.connect(
+            host=config["DATABASE"]["HOST"],
+            port=int(config["DATABASE"]["PORT"]),
+            user=config["DATABASE"]["USER"],
+            passwd=config["DATABASE"]["PASS"],
+            db=config["DATABASE"]["NAME"],
+            charset="utf8",
+        )
         conn.autocommit(False)
         # filter duplicate entry warnings
-        warnings.filterwarnings('ignore', category=pymysql.Warning)
+        warnings.filterwarnings("ignore", category=pymysql.Warning)
         self.conn = conn
-        self.cur = self.conn.cursor();
+        self.cur = self.conn.cursor(pymysql.cursors.DictCursor)
 
     # escape special characters for LIKE queries
     def escape_like(self, sql):
-        return self.conn.escape_string(sql).replace('_', '\\_')
+        return self.conn.escape_string(sql).replace("_", "\\_")
 
     # wrap execute to catch SQL errors
-    def execute(self, sql, args = None):
+    def execute(self, sql, args=None):
         try:
             # store sql and args incase we want to inspect with sql()
             self._last_sql = sql

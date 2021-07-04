@@ -8,8 +8,10 @@ import sys
 import argparse
 from database import Database
 
-parser = argparse.ArgumentParser(description='Check Digikam Tags Tree')
-parser.add_argument('-q', '--quiet', action='store_true', help="quiet, don't output if tree ok")
+parser = argparse.ArgumentParser(description="Check Digikam Tags Tree")
+parser.add_argument(
+    "-q", "--quiet", action="store_true", help="quiet, don't output if tree ok"
+)
 
 args = parser.parse_args()
 
@@ -46,13 +48,13 @@ ORDER BY pid
 
 errors = []
 for tag in tags:
-    curA = db.execute(sqlAncestor, {'id': tag[0]})
+    curA = db.execute(sqlAncestor, {"id": tag["id"]})
     tagsA = curA.fetchall()
-    curT = db.execute(sqlTree, {'id': tag[0]})
+    curT = db.execute(sqlTree, {"id": tag["id"]})
     tagsT = curT.fetchall()
     for idx, tagA in enumerate(tagsA):
         try:
-            if tagA[1] != tagsT[idx][1]:
+            if tagA["pid"] != tagsT[idx]["pid"]:
                 errors.append(tag)
                 break
         except IndexError:
@@ -60,9 +62,11 @@ for tag in tags:
             break
 
 if errors:
-    print("""
+    print(
+        """
 INCONSISTENT TAGS TREE
-""")
+"""
+    )
     for tag in errors:
         print(tag)
 
