@@ -6,3 +6,6 @@ USER=username
 PASS=password
 NAME=database
 
+[TAGS]
+CAMERA=_CameraBody
+LENS=_CameraLens

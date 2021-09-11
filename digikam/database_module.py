@@ -1,20 +1,15 @@
-#!/usr/bin/env python3
-
-import configparser
 import pymysql
 import warnings
 
 
 class Database:
-    def __init__(self):
-        config = configparser.ConfigParser()
-        config.read("digikam.ini")
+    def __init__(self, config):
         conn = pymysql.connect(
-            host=config["DATABASE"]["HOST"],
-            port=int(config["DATABASE"]["PORT"]),
-            user=config["DATABASE"]["USER"],
-            passwd=config["DATABASE"]["PASS"],
-            db=config["DATABASE"]["NAME"],
+            host=config["host"],
+            port=config["port"],
+            user=config["user"],
+            passwd=config["passwd"],
+            db=config["db"],
             charset="utf8",
         )
         conn.autocommit(False)
@@ -42,6 +37,9 @@ class Database:
 
     def commit(self):
         self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
 
     def close(self):
         self.cur.close()

@@ -6,7 +6,7 @@
 
 import sys
 import argparse
-from database import Database
+from digikam import Digikam
 
 parser = argparse.ArgumentParser(description="Check Digikam Tags Tree")
 parser.add_argument(
@@ -15,9 +15,9 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-
-db = Database()
-db2 = Database()
+digikam = Digikam()
+db = digikam.db()
+db2 = digikam.db()
 
 sql = "SELECT id, pid, name FROM Tags WHERE id <> 0"
 cur = db.execute(sql)

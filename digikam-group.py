@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-from database import Database
+from digikam import Digikam
 
 
 def eprint(*args, **kwargs):
@@ -65,7 +65,8 @@ if len(sys.argv) == 1:
     sys.exit(1)
 
 args = parser.parse_args()
-db = Database()
+digikam = Digikam()
+db = digikam.db()
 groupType = "2"
 if args.group_version:
     groupType = "1"
@@ -248,7 +249,7 @@ for group in groups:
             # sql = sqlRating.format(ids=",".join(ids))
             cur = db.execute(sqlRating, {"ids": ids})
             row = cur.fetchone()
-            rating = row['maxRating']
+            rating = row["maxRating"]
             print("\t  Updating rating: {0}".format(rating))
             subIds = list(str(i["id"]) for i in subs)
             # sql = sqlRatingsUpdate.format(rating=rating,ids=",".join(ids))
