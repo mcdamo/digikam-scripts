@@ -5,8 +5,22 @@ These only work on an external MySQL/MariaDB instance. They will not work if you
 
 Make a backup of your database before testing and *Use At Your Own Risk*. 
 
-## Setup
-These scripts require python3 and pymysql.
+## Install
+
+### Python
+
+#### Virtual Environment
+```
+python3 -m venv venv
+source venv/bin/activate
+```
+
+#### Python Libs
+```
+pip3 install -r requirements.txt
+```
+
+### Setup
 
 Copy ```digikam.ini.dist``` to ```digikam.ini``` and populate with your database connection settings.
 

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # Check the consistency of Digikam's Tags table
 # prints nothing if consistent
