@@ -20,6 +20,7 @@ class Config:
     def tags(self):
         config = self._config
         return {
-            "camera": config["TAGS"]["CAMERA"],
-            "lens": config["TAGS"]["LENS"],
+            "root_camera": config["TAGS"]["ROOT_CAMERA"],
+            "root_lens": config["TAGS"]["ROOT_LENS"],
+            "makes": config["TAGS"]["MAKES"].split(","),
         }

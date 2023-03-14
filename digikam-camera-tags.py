@@ -4,6 +4,7 @@ import sys
 import argparse
 import progressbar
 import tabulate
+from getkey import getkey
 from digikam import Digikam
 
 
@@ -41,13 +42,15 @@ paths = cur.fetchall()
 
 print(tabulate.tabulate(paths))
 
-s = input("Continue (y/n) ? ")
+print("Continue (y/n) ? ")
+s = getkey()
 if s != "y":
     sys.exit(-1)
 
 # find Tag ids for root
-root_camera = config["camera"]
-root_lens = config["lens"]
+root_camera = config["root_camera"]
+root_lens = config["root_lens"]
+makes = config["makes"]
 
 new_tags_list = []
 
@@ -76,7 +79,7 @@ def fetchTag(name, pid=None):
 def createTag(name, pid):
     sql = "INSERT INTO `Tags` (`name`, `pid`) VALUES (%(name)s, %(pid)s)"
     cur = db.execute(sql, {"name": name, "pid": pid})
-    new_tags_list.append(name)
+    new_tags_list.append((cur.lastrowid, name))
     # TagsTree records are created by a Trigger on Tags table
     return cur.lastrowid
 
@@ -152,7 +155,7 @@ cur = db.execute(
 images = cur.fetchall()
 
 
-def decodeMetadata(metadata):
+def decodeMetadata(metadata, makes):
     make = metadata["make"]
     model = metadata["model"]
     lens = metadata["lens"]
@@ -174,12 +177,11 @@ def decodeMetadata(metadata):
     if not model[: len(make)] == make:
         model = make + " " + model
 
-    def decodeLens(make, lens):
+    def decodeLens(make, lens, makes):
         if not lens:
             return None
         # ignore lenses if not these makes
-        makes = {"Canon", "FUJIFILM"}  # set()
-        if not make in makes:
+        if len(makes) > 0 and not make in makes:
             return None
 
         # ignore Canon lenses that begin with a number
@@ -188,21 +190,24 @@ def decodeMetadata(metadata):
 
         # fix inconsistently named lenses:
         fixLens = {
-            "Canon EF-S 17-85mm f4-5.6 IS USM": "Canon EF-S 17-85mm f/4-5.6 IS USM",
-            "EF-S18-55mm f/3.5-5.6 IS": "Canon EF-S 18-55mm f/3.5-5.6 IS",
-            "EF24-105mm f/4L IS USM": "Canon EF 24-105mm f/4L IS USM",
-            "Canon EF 24-105mm f/4L IS": "Canon EF 24-105mm f/4L IS USM",
-            "EF50mm f/1.4 USM": "Canon EF 50mm f/1.4 USM",
+            "Canon EF-S 17-85mm f4-5.6 IS USM": "Canon EF-S 17-85mm f4-5.6 IS USM",
+            "EF-S18-55mm f/3.5-5.6 IS": "Canon EF-S 18-55mm f3.5-5.6 IS",
+            "EF24-105mm f/4L IS USM": "Canon EF 24-105mm f4L IS USM",
+            "Canon EF 24-105mm f/4L IS": "Canon EF 24-105mm f4L IS USM",
+            "EF50mm f/1.4 USM": "Canon EF 50mm f1.4 USM",
         }
         if fixLens.get(lens, False):
             return fixLens[lens]
+
+        # strip slashes in tags (common with Canon lenses)
+        lens = lens.replace("/", "")
 
         # prepend make to lens if not included
         if not lens[: len(make)] == make:
             return make + " " + lens
         return lens
 
-    lens = decodeLens(make, lens)
+    lens = decodeLens(make, lens, makes)
     return {
         "make": make,
         "model": model,
@@ -210,7 +215,7 @@ def decodeMetadata(metadata):
     }
 
 
-images = [{**i, **decodeMetadata(i)} for i in images]
+images = [{**i, **decodeMetadata(i, makes)} for i in images]
 print(tabulate.tabulate(images, headers="keys", tablefmt="psql"))
 
 # optimized to reuse id
@@ -225,7 +230,7 @@ for image in progressbar.progressbar(images):
     if image["make"] and image["model"]:
         if not prev_image or image["make"] != prev_image["make"]:
             # find tags under root tags
-            camera_base = image["make"] + " Camera"
+            camera_base = image["make"]  # + " Camera"
             camera_base_id = fetchOrCreateTag(camera_base, root_camera_tag_id)["id"]
         if (
             not prev_image
@@ -233,12 +238,13 @@ for image in progressbar.progressbar(images):
             or image["model"] != prev_image["model"]
         ):
             model_id = fetchOrCreateTag(image["model"], camera_base_id)["id"]
-        addImageTag(image["id"], root_camera_tag_id)
+        ## tagging image with root tag is commented out below
+        # addImageTag(image["id"], root_camera_tag_id)
         addImageTag(image["id"], camera_base_id)
         addImageTag(image["id"], model_id)
         if image["lens"]:
             if not prev_image or image["make"] != prev_image["make"]:
-                lens_base = image["make"] + " Lens"
+                lens_base = image["make"]  # + " Lens"
                 lens_base_id = fetchOrCreateTag(lens_base, root_lens_tag_id)["id"]
             if (
                 not prev_image
@@ -246,7 +252,8 @@ for image in progressbar.progressbar(images):
                 or image["lens"] != prev_image["lens"]
             ):
                 lens_id = fetchOrCreateTag(image["lens"], lens_base_id)["id"]
-            addImageTag(image["id"], root_lens_tag_id)
+            ## tagging image with root tag is commented out below
+            # addImageTag(image["id"], root_lens_tag_id)
             addImageTag(image["id"], lens_base_id)
             addImageTag(image["id"], lens_id)
     prev_image = image
@@ -260,7 +267,8 @@ print(
         [{"Num": i + 1, "Name": new_tags_list[i]} for i in range(len(new_tags_list))]
     )
 )
-s = input("Commit changes (y/n) ? ")
+print("Commit changes (y/n) ? ")
+s = getkey()
 if s != "y":
     db.rollback()
     db.close()

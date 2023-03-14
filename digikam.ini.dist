@@ -7,5 +7,10 @@ PASS=password
 NAME=database
 
 [TAGS]
-CAMERA=_CameraBody
-LENS=_CameraLens
+; name of the root tag for Cameras
+ROOT_CAMERA=_CameraBody
+; name of the root tag for Lenses
+ROOT_LENS=_CameraLens
+; optional comma-seperated list of makes to tag with Lenses
+; leave empty to tag all makes
+MAKES=Canon,FUJIFILM
