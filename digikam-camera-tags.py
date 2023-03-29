@@ -79,7 +79,7 @@ def fetchTag(name, pid=None):
 def createTag(name, pid):
     sql = "INSERT INTO `Tags` (`name`, `pid`) VALUES (%(name)s, %(pid)s)"
     cur = db.execute(sql, {"name": name, "pid": pid})
-    new_tags_list.append((cur.lastrowid, name))
+    new_tags_list.append((cur.lastrowid, pid, name))
     # TagsTree records are created by a Trigger on Tags table
     return cur.lastrowid
 
@@ -159,6 +159,12 @@ def decodeMetadata(metadata, makes):
     make = metadata["make"]
     model = metadata["model"]
     lens = metadata["lens"]
+    if not make or not model:
+        return {
+            "make": None,
+            "model": None,
+            "lens": None,
+        }
 
     # fix differently named makes
     fixMakes = {
@@ -219,7 +225,11 @@ images = [{**i, **decodeMetadata(i, makes)} for i in images]
 print(tabulate.tabulate(images, headers="keys", tablefmt="psql"))
 
 # optimized to reuse id
-prev_image = None
+prev_image = {
+    "make": None,
+    "model": None,
+    "lens": None,
+}
 camera_base = None
 camera_base_id = None
 lens_base = None
@@ -228,40 +238,40 @@ print("")
 print("Processing Images")
 for image in progressbar.progressbar(images):
     if image["make"] and image["model"]:
-        if not prev_image or image["make"] != prev_image["make"]:
+        if image["make"] != prev_image["make"]:
             # find tags under root tags
-            camera_base = image["make"]  # + " Camera"
+            camera_base = image["make"] + " Camera"
             camera_base_id = fetchOrCreateTag(camera_base, root_camera_tag_id)["id"]
-        if (
-            not prev_image
-            or image["make"] != prev_image["make"]
-            or image["model"] != prev_image["model"]
-        ):
+        if image["make"] != prev_image["make"] or image["model"] != prev_image["model"]:
             model_id = fetchOrCreateTag(image["model"], camera_base_id)["id"]
-        ## tagging image with root tag is commented out below
-        # addImageTag(image["id"], root_camera_tag_id)
+
+        addImageTag(image["id"], root_camera_tag_id)
         addImageTag(image["id"], camera_base_id)
         addImageTag(image["id"], model_id)
         if image["lens"]:
-            if not prev_image or image["make"] != prev_image["make"]:
-                lens_base = image["make"]  # + " Lens"
+            if not lens_base_id or image["make"] != prev_image["make"]:
+                lens_base = image["make"] + " Lens"
                 lens_base_id = fetchOrCreateTag(lens_base, root_lens_tag_id)["id"]
             if (
-                not prev_image
+                not lens_id
                 or image["make"] != prev_image["make"]
                 or image["lens"] != prev_image["lens"]
             ):
                 lens_id = fetchOrCreateTag(image["lens"], lens_base_id)["id"]
-            ## tagging image with root tag is commented out below
-            # addImageTag(image["id"], root_lens_tag_id)
+
+            if root_lens_tag_id != root_camera_tag_id:
+                addImageTag(image["id"], root_lens_tag_id)
             addImageTag(image["id"], lens_base_id)
             addImageTag(image["id"], lens_id)
+        else:
+            lens_base_id = None
+            lens_id = None
     prev_image = image
 
 
 # confirm for any new models or makes added to DB
 print("")
-print("NEW TAGS")
+print("NEW TAGS (id, pid, name)")
 print(
     tabulate.tabulate(
         [{"Num": i + 1, "Name": new_tags_list[i]} for i in range(len(new_tags_list))]
