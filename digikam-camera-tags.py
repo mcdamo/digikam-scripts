@@ -16,7 +16,12 @@ parser = argparse.ArgumentParser(description="Create Digikam Tags for Camera and
 parser.add_argument(
     "path", metavar="PATH", type=str, help="relative album path or substring"
 )
-
+parser.add_argument(
+    "-a",
+    dest="album_root",
+    action="store_true",
+    help="match on AlbumRoot label (includes all Albums)",
+)
 if len(sys.argv) == 1:
     parser.print_help(sys.stderr)
     sys.exit(1)
@@ -26,15 +31,26 @@ digikam = Digikam()
 config = digikam.config.tags()
 db = digikam.db()
 
-# path should match a single relativePath
+if args.album_root:
+    # find AlbumRoot matching path:
+    sql_path_where = "r.label = %(path)s"
+    sql_path_val = args.path
+else:
+    # path should match a single relativePath
+    # need COLLATE for case-insensitive match on UTF8_BIN column
+    sql_path_where = "a.relativePath COLLATE UTF8_GENERAL_CI like %(path)s"
+    sql_path_val = "%" + db.escape_like(args.path) + "%"
+
 sqlPath = """
 SELECT r.label, a.relativePath FROM `Albums` a 
 INNER JOIN `AlbumRoots` r ON r.id = a.albumRoot
-WHERE a.relativePath like %(path)s
+WHERE {sqlPathWhere}
 ORDER BY r.label, a.relativePath
-"""
+""".format(
+    sqlPathWhere=sql_path_where
+)
+cur = db.execute(sqlPath, {"path": sql_path_val})
 
-cur = db.execute(sqlPath, {"path": "%" + db.escape_like(args.path) + "%"})
 if cur.rowcount == 0:
     print("Path not found")
     sys.exit(2)
@@ -46,6 +62,7 @@ print("Continue (y/n) ? ")
 s = getkey()
 if s != "y":
     sys.exit(-1)
+print("Loading...")
 
 # find Tag ids for root
 root_camera = config["root_camera"]
@@ -118,25 +135,30 @@ im.lens
 FROM `Images` i
 INNER JOIN `ImageMetadata` im ON im.imageid = i.id
 INNER JOIN (
-    SELECT * FROM `Albums` a
-    WHERE a.relativePath like %(path)s
+    SELECT a.* FROM `Albums` a
+    INNER JOIN `AlbumRoots` r ON r.id = a.albumRoot
+    WHERE {sqlPathWhere}
 ) a ON a.id = i.album
 WHERE 1=1
+AND im.make IS NOT NULL
+AND im.model IS NOT NULL
 AND NOT EXISTS (
     SELECT it.imageid
     FROM `ImageTags` it
     INNER JOIN `Tags` t ON t.id = it.tagid
+    INNER JOIN `TagsTree` tt ON tt.id = t.id
     WHERE
         imageid = i.id
-        AND t.pid IN %(roots)s
+        AND tt.pid IN %(roots)s
 )
 ORDER BY a.relativePath, i.album
-"""
-
+""".format(
+    sqlPathWhere=sql_path_where
+)
 cur = db.execute(
     sql,
     {
-        "path": "%" + db.escape_like(args.path) + "%",
+        "path": sql_path_val,
         "roots": (
             root_camera_tag_id,
             root_lens_tag_id,
@@ -153,6 +175,10 @@ cur = db.execute(
 
 
 images = cur.fetchall()
+
+if not images:
+    print("No untagged images found.")
+    sys.exit(0)
 
 
 def decodeMetadata(metadata, makes):
@@ -209,7 +235,7 @@ def decodeMetadata(metadata, makes):
         lens = lens.replace("/", "")
 
         # prepend make to lens if not included
-        if not lens[: len(make)] == make:
+        if not lens[: len(make)].lower() == make.lower():
             return make + " " + lens
         return lens
 
@@ -234,6 +260,7 @@ camera_base = None
 camera_base_id = None
 lens_base = None
 lens_base_id = None
+lens_id = None
 print("")
 print("Processing Images")
 for image in progressbar.progressbar(images):
@@ -245,8 +272,8 @@ for image in progressbar.progressbar(images):
         if image["make"] != prev_image["make"] or image["model"] != prev_image["model"]:
             model_id = fetchOrCreateTag(image["model"], camera_base_id)["id"]
 
-        addImageTag(image["id"], root_camera_tag_id)
-        addImageTag(image["id"], camera_base_id)
+        # addImageTag(image["id"], root_camera_tag_id)
+        # addImageTag(image["id"], camera_base_id)
         addImageTag(image["id"], model_id)
         if image["lens"]:
             if not lens_base_id or image["make"] != prev_image["make"]:
@@ -259,9 +286,9 @@ for image in progressbar.progressbar(images):
             ):
                 lens_id = fetchOrCreateTag(image["lens"], lens_base_id)["id"]
 
-            if root_lens_tag_id != root_camera_tag_id:
-                addImageTag(image["id"], root_lens_tag_id)
-            addImageTag(image["id"], lens_base_id)
+            # if root_lens_tag_id != root_camera_tag_id:
+            #    addImageTag(image["id"], root_lens_tag_id)
+            # addImageTag(image["id"], lens_base_id)
             addImageTag(image["id"], lens_id)
         else:
             lens_base_id = None
