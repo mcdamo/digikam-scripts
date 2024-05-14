@@ -8,9 +8,9 @@ NAME=database
 
 [TAGS]
 ; name of the root tag for Cameras
-ROOT_CAMERA=_CameraBody
+ROOT_CAMERA=_PhotoInfo
 ; name of the root tag for Lenses
-ROOT_LENS=_CameraLens
+ROOT_LENS=_PhotoInfo
 ; optional comma-seperated list of makes to tag with Lenses
 ; leave empty to tag all makes
-MAKES=Canon,FUJIFILM
+MAKES=Canon,FUJIFILM,NIKON,OLYMPUS
