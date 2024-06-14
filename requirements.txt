@@ -1,4 +1,4 @@
 getkey==0.6.5
-progressbar33==2.4
-pymysql==1.0.2
+progressbar2==4.4.2
+pymysql==1.1.1
 tabulate==0.9.0
